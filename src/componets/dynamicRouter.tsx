@@ -1,11 +1,11 @@
 import { useState } from "react";
 
 interface Router {
-  id: number;
   x: number;
   y: number;
+  size: number;
 }
-export default function DynamicRouter({ x, y, id, size }) {
+export default function DynamicRouter({ x, y, size }: Router) {
   return (
     <>
       <img

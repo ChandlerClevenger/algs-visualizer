@@ -1,7 +1,7 @@
 import React from "react";
 import Draggable from "react-draggable";
 
-export default function StaticRouter({ onStop, position, size }) {
+export default function StaticRouter({ onStop, position, size }: any) {
   return (
     <>
       <Draggable

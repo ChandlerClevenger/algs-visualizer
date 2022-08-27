@@ -18,10 +18,10 @@ interface Router {
 const Home: NextPage = () => {
   const ROUTER_SIZE = 75;
   const [routers, setRouters] = useState<Router[]>([]);
-  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const [pos, setPos] = useState<Point>({ x: 0, y: 0 });
 
   function drop(e: React.MouseEvent, info: DraggableData) {
-    let coords = normalizeDrop(e);
+    let coords: any = normalizeDrop(e);
     if (!coords) return;
 
     setRouters((oldRouters) => [
@@ -30,7 +30,7 @@ const Home: NextPage = () => {
     ]);
   }
 
-  function normalizeDrop(e: MouseEvent): Point | null {
+  function normalizeDrop(e: any): Point | null {
     let mouseX = e.clientX;
     let mouseY = e.clientY;
     const deviceBarRect = document
@@ -90,7 +90,6 @@ const Home: NextPage = () => {
               key={index}
               x={router.x}
               y={router.y}
-              id={router.id}
               size={ROUTER_SIZE}
             />
           ))}
