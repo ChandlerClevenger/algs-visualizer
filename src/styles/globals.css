@@ -1,3 +1,28 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.drop-shadow-lg {
+    --tw-drop-shadow: drop-shadow(0 10px 8px rgba(0, 0, 0, 0.04)) drop-shadow(0 4px 3px rgba(0, 0, 0, 0.4));
+}
+:hover.drop-shadow-lg {
+    animation: drop-shadow-darker forwards 1s;
+}
+.device-sidebar {
+    position: absolute;
+    min-width: 200px;
+    max-width: 200px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+img {
+max-height: 30vmin;
+}
+@keyframes drop-shadow-darker {
+    from {
+        --tw-drop-shadow: drop-shadow(0 10px 8px rgba(0, 0, 0, 0.04)) drop-shadow(0 4px 3px rgba(0, 0, 0, 0.4));
+    }   
+    to {
+        --tw-drop-shadow: drop-shadow(0 10px 8px rgb(0, 0, 0)) drop-shadow(0 4px 3px rgb(0, 0, 0));
+    }
+}

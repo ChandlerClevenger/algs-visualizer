@@ -1,15 +1,72 @@
 import type { NextPage } from "next";
 import Head from "next/head";
-import { trpc } from "../utils/trpc";
+import React, { useEffect, useState } from "react";
+import { DraggableData } from "react-draggable";
+import DynamicRouter from "../componets/dynamicRouter";
+import StaticRouter from "../componets/staticRouter";
 
-type TechnologyCardProps = {
-  name: string;
-  description: string;
-  documentation: string;
-};
+interface Point {
+  x: number;
+  y: number;
+}
+interface Router {
+  id: number;
+  x: number;
+  y: number;
+}
 
 const Home: NextPage = () => {
-  const hello = trpc.useQuery(["example.hello", { text: "from tRPC" }]);
+  const ROUTER_SIZE = 75;
+  const [routers, setRouters] = useState<Router[]>([]);
+  const [pos, setPos] = useState<Point>({ x: 0, y: 0 });
+
+  function drop(e: React.MouseEvent, info: DraggableData) {
+    const coords: any = normalizeDrop(e);
+    if (!coords) return;
+
+    setRouters((oldRouters) => [
+      ...oldRouters,
+      { x: coords.x, y: coords.y, id: routers.length },
+    ]);
+  }
+
+  function normalizeDrop(e: any): Point | null {
+    let mouseX = e.clientX;
+    let mouseY = e.clientY;
+    const deviceBarRect = document
+      .querySelector("#device-bar")
+      ?.getClientRects()[0];
+    const boardRect = document.querySelector("#board")?.getClientRects()[0];
+    const routerRect = e.target?.getClientRects()[0];
+
+    // Check bounds
+    if (
+      !deviceBarRect ||
+      !boardRect ||
+      deviceBarRect.right > mouseX ||
+      mouseX > boardRect.right ||
+      mouseX < boardRect.left ||
+      mouseY < boardRect.top ||
+      mouseY > boardRect.bottom
+    ) {
+      return null;
+    }
+    // Correct bounds
+    const BUFFER = ROUTER_SIZE / 2;
+    if (routerRect.bottom + BUFFER > deviceBarRect.bottom) {
+      mouseY = deviceBarRect.bottom - BUFFER;
+    }
+    if (routerRect.top - BUFFER < deviceBarRect.top) {
+      mouseY = deviceBarRect.top + BUFFER;
+    }
+    if (routerRect.left - BUFFER < deviceBarRect.right) {
+      mouseX = deviceBarRect.right + BUFFER;
+    }
+    if (routerRect.right + BUFFER > boardRect.right) {
+      mouseX = boardRect.right - BUFFER;
+    }
+    return { x: mouseX, y: mouseY };
+  }
 
   return (
     <>
@@ -19,31 +76,26 @@ const Home: NextPage = () => {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <main className="mx-auto flex flex-col items-center justify-center min-h-screen bg-gray-200">
-        <h1>Soon... there will be... <span className="text-lg text-gray-900">algorithms</span>!</h1>
+      <main className="flex h-screen w-screen overflow-hidden">
+        <div
+          id="device-bar"
+          className="absolute p-4 fit h-screen bg-slate-800 text-center rounded-r-md	"
+        >
+          <span className=" text-white font-bold">Router</span>
+          <StaticRouter onStop={drop} position={pos} size={ROUTER_SIZE} />;
+        </div>
+        <div id="board" className="w-screen bg-slate-400">
+          {routers.map((router, index) => (
+            <DynamicRouter
+              key={index}
+              x={router.x}
+              y={router.y}
+              size={ROUTER_SIZE}
+            />
+          ))}
+        </div>
       </main>
     </>
-  );
-};
-
-const TechnologyCard = ({
-  name,
-  description,
-  documentation,
-}: TechnologyCardProps) => {
-  return (
-    <section className="flex flex-col justify-center p-6 duration-500 border-2 border-gray-500 rounded shadow-xl motion-safe:hover:scale-105">
-      <h2 className="text-lg text-gray-700">{name}</h2>
-      <p className="text-sm text-gray-600">{description}</p>
-      <a
-        className="mt-3 text-sm underline text-violet-500 decoration-dotted underline-offset-2"
-        href={documentation}
-        target="_blank"
-        rel="noreferrer"
-      >
-        Documentation
-      </a>
-    </section>
   );
 };
 
