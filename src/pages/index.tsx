@@ -21,7 +21,7 @@ const Home: NextPage = () => {
   const [pos, setPos] = useState<Point>({ x: 0, y: 0 });
 
   function drop(e: React.MouseEvent, info: DraggableData) {
-    let coords: any = normalizeDrop(e);
+    const coords: any = normalizeDrop(e);
     if (!coords) return;
 
     setRouters((oldRouters) => [
