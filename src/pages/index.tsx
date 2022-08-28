@@ -44,7 +44,7 @@ const Home: NextPage = () => {
     }
 
     const DRAGGED_ID = Number(info.node.id);
-    for (let router of routers) {
+    for (const router of routers) {
       if (router.id == DRAGGED_ID) {
         // update position of old
         router.x = info.x;
