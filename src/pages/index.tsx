@@ -25,14 +25,14 @@ const Home: NextPage = () => {
   const [routers, setRouters] = useState<RouterInt[]>([defaultRouter]);
   const [currentPos, setCurrentPos] = useState({ top: 0, left: 0 });
   const [lines, setLines] = useState<React.SVGProps<SVGLineElement>[]>([]);
-  const [clickedRouter, setClickedRouter] = useState<RouterInt>();
+  const [clickedRouter, setClickedRouter] = useState<any>();
 
-  function start(e: React.MouseEvent) {
+  function start(e: any) {
     const { top, left } = e.target.getBoundingClientRect();
     setCurrentPos({ top, left });
   }
 
-  function drop(e: React.MouseEvent, info: DraggableData) {
+  function drop(e: any, info: DraggableData) {
     const { top, left } = e.target.getBoundingClientRect();
     // Must move at least 100 px out
     if (info.x < 100 && info.y < 100) return;
@@ -55,30 +55,41 @@ const Home: NextPage = () => {
     if (DRAGGED_ID == routers.length - 1) {
       setRouters((oldRouters) => [
         ...oldRouters,
-        { onStop: drop, id: routers.length, x: 0, y: 0 },
+        { start: start, onStop: drop, id: routers.length, x: 0, y: 0 },
       ]);
     }
     console.log(routers);
   }
 
-  function handleClick(e: React.MouseEvent, info: DraggableData) {
+  function drawLine(el1: RouterInt, el2: RouterInt) {
+    if (!clickedRouter) return;
+    const diff = ROUTER_SIZE / 2;
+    let x1 = el1.x + diff;
+    let x2 = el2.x + diff;
+    let y1 = clickedRouter.y + diff;
+    let y2 = el2.y + diff;
+    setLines((oldLines) => [...oldLines, { x1: x1, x2: x2, y1: y1, y2: y2 }]);
+  }
+
+  function handleClick(e: any, info: DraggableData) {
     console.log("clicked");
     if (clickedRouter) {
-      const diff = ROUTER_SIZE / 2;
-      let x1 = clickedRouter.x + diff;
-      let x2 = info.x + diff;
-      let y1 = clickedRouter.y + diff;
-      let y2 = info.y + diff;
-      setLines((oldLines) => [
-        ...oldLines,
-        { x1: clickedRouter.x, x2: info.x, y1: clickedRouter.y, y2: info.y },
-      ]);
+      drawLine(
+        { ...clickedRouter },
+        { start: start, onStop: drop, id: e.target.id, x: info.x, y: info.y }
+      );
       setClickedRouter(null);
       console.log("Resetting clicked");
       return;
     }
     console.log("Setting first clicked");
-    setClickedRouter({ onstop: drop, id: e.target.id, x: info.x, y: info.y });
+    setClickedRouter({
+      start: start,
+      onstop: drop,
+      id: e.target.id,
+      x: info.x,
+      y: info.y,
+    });
     console.log(clickedRouter);
   }
 
