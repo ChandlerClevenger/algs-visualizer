@@ -33,7 +33,7 @@ const Home: NextPage = () => {
     const DRAGGED_ID = Number(info.node.id);
     lines.map(([el1, el2]) => {
       if ([Number(el1.id), Number(el2.id)].includes(DRAGGED_ID)) {
-        let current = DRAGGED_ID == el1.id ? el1 : el2;
+        const current = DRAGGED_ID == el1.id ? el1 : el2;
         current.x = info.x;
         current.y = info.y;
       }
