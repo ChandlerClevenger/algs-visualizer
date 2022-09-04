@@ -1,4 +1,3 @@
-import { copyFileSync } from "fs";
 import type { NextPage } from "next";
 import Head from "next/head";
 import React, { useEffect, useState } from "react";
@@ -6,9 +5,11 @@ import { DraggableData } from "react-draggable";
 import Router from "../componets/router";
 
 const ROUTER_SIZE = 75;
+const LINE_OFFSET = ROUTER_SIZE / 2;
 interface RouterInt {
   onStop: any;
   start: any;
+  onDrag: any;
   id: number;
   x: number;
   y: number;
@@ -18,21 +19,33 @@ const Home: NextPage = () => {
   const defaultRouter: RouterInt = {
     onStop: drop,
     start: start,
+    onDrag: drag,
     id: 0,
     x: 0,
     y: 0,
   };
   const [routers, setRouters] = useState<RouterInt[]>([defaultRouter]);
   const [currentPos, setCurrentPos] = useState({ top: 0, left: 0 });
-  const [lines, setLines] = useState<React.SVGProps<SVGLineElement>[]>([]);
+  const [lines, setLines] = useState<[RouterInt, RouterInt][]>([]);
   const [clickedRouter, setClickedRouter] = useState<any>();
 
-  function start(e: any) {
+  function drag(e: any, info: DraggableData): void {
+    const DRAGGED_ID = Number(info.node.id);
+    lines.map(([el1, el2]) => {
+      if ([Number(el1.id), Number(el2.id)].includes(DRAGGED_ID)) {
+        let current = DRAGGED_ID == el1.id ? el1 : el2;
+        current.x = info.x;
+        current.y = info.y;
+      }
+    });
+    setLines((lines) => [...lines]);
+  }
+  function start(e: any): void {
     const { top, left } = e.target.getBoundingClientRect();
     setCurrentPos({ top, left });
   }
 
-  function drop(e: any, info: DraggableData) {
+  function drop(e: any, info: DraggableData): void {
     const { top, left } = e.target.getBoundingClientRect();
     // Must move at least 100 px out
     if (info.x < 100 && info.y < 100) return;
@@ -55,42 +68,48 @@ const Home: NextPage = () => {
     if (DRAGGED_ID == routers.length - 1) {
       setRouters((oldRouters) => [
         ...oldRouters,
-        { start: start, onStop: drop, id: routers.length, x: 0, y: 0 },
+        {
+          start: start,
+          onStop: drop,
+          onDrag: drag,
+          id: routers.length,
+          x: 0,
+          y: 0,
+        },
       ]);
     }
-    console.log(routers);
+    //console.log(routers);
   }
 
-  function drawLine(el1: RouterInt, el2: RouterInt) {
-    if (!clickedRouter) return;
-    const diff = ROUTER_SIZE / 2;
-    const x1 = el1.x + diff;
-    const x2 = el2.x + diff;
-    const y1 = clickedRouter.y + diff;
-    const y2 = el2.y + diff;
-    setLines((oldLines) => [...oldLines, { x1: x1, x2: x2, y1: y1, y2: y2 }]);
-  }
+  function handleClick(e: any, info: DraggableData): void {
+    console.log("CLicked royuter: ", clickedRouter);
 
-  function handleClick(e: any, info: DraggableData) {
-    console.log("clicked");
-    if (clickedRouter) {
-      drawLine(
-        { ...clickedRouter },
-        { start: start, onStop: drop, id: e.target.id, x: info.x, y: info.y }
-      );
+    if (clickedRouter && clickedRouter.id != e.target.id) {
+      setLines((oldLines) => [
+        ...oldLines,
+        [
+          clickedRouter,
+          {
+            start: start,
+            onStop: drop,
+            onDrag: drag,
+            id: e.target.id,
+            x: info.x,
+            y: info.y,
+          },
+        ],
+      ]);
       setClickedRouter(null);
-      console.log("Resetting clicked");
       return;
     }
-    console.log("Setting first clicked");
     setClickedRouter({
       start: start,
       onstop: drop,
+      onDrag: drag,
       id: e.target.id,
       x: info.x,
       y: info.y,
     });
-    console.log(clickedRouter);
   }
 
   return (
@@ -107,13 +126,13 @@ const Home: NextPage = () => {
             id="lines"
             className="absolute w-screen h-screen pointer-events-none"
           >
-            {lines.map((line, index) => (
+            {lines.map(([line1, line2], index) => (
               <line
                 key={index}
-                x1={line.x1}
-                y1={line.y1}
-                x2={line.x2}
-                y2={line.y2}
+                x1={line1.x + LINE_OFFSET}
+                y1={line1.y + LINE_OFFSET}
+                x2={line2.x + LINE_OFFSET}
+                y2={line2.y + LINE_OFFSET}
                 strokeWidth={1}
                 stroke={"black"}
               />
@@ -128,6 +147,7 @@ const Home: NextPage = () => {
               y={router.y}
               start={start}
               onStop={drop}
+              onDrag={drag}
             />
           ))}
         </div>

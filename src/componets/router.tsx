@@ -1,7 +1,7 @@
 import React, { useRef } from "react";
 import Draggable from "react-draggable";
 
-export default function Router({ onStop, id, x, y, start, size }: any) {
+export default function Router({ onStop, onDrag, id, x, y, start, size }: any) {
   const draggableRef = useRef<Draggable>(null);
   return (
     <>
@@ -9,6 +9,7 @@ export default function Router({ onStop, id, x, y, start, size }: any) {
         ref={draggableRef}
         onStart={start}
         onStop={onStop}
+        onDrag={onDrag}
         bounds="#board"
         defaultPosition={{ x: 0, y: 0 }}
         handle=".router"
