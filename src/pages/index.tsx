@@ -102,7 +102,7 @@ const Home: NextPage = () => {
       x: info.x,
       y: info.y,
     };
-    let [smaller, larger] = [clickedRouter, secondRouter].sort((a, b) =>
+    const [smaller, larger] = [clickedRouter, secondRouter].sort((a, b) =>
       a.id > b.id ? 1 : -1
     );
 
