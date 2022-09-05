@@ -1,6 +1,6 @@
 import type { NextPage } from "next";
 import Head from "next/head";
-import React, { useEffect, useState } from "react";
+import React, { BaseSyntheticEvent, useState } from "react";
 import { DraggableData } from "react-draggable";
 import Router from "../componets/router";
 
@@ -31,6 +31,7 @@ const Home: NextPage = () => {
 
   function drag(e: any, info: DraggableData): void {
     const DRAGGED_ID = Number(info.node.id);
+    // Update lines
     lines.map(([el1, el2]) => {
       if ([Number(el1.id), Number(el2.id)].includes(DRAGGED_ID)) {
         const current = DRAGGED_ID == el1.id ? el1 : el2;
@@ -40,12 +41,12 @@ const Home: NextPage = () => {
     });
     setLines((lines) => [...lines]);
   }
-  function start(e: any): void {
+  function start(e: BaseSyntheticEvent): void {
     const { top, left } = e.target.getBoundingClientRect();
     setCurrentPos({ top, left });
   }
 
-  function drop(e: any, info: DraggableData): void {
+  function drop(e: BaseSyntheticEvent, info: DraggableData): void {
     const { top, left } = e.target.getBoundingClientRect();
     // Must move at least 100 px out
     if (info.x < 100 && info.y < 100) return;
@@ -81,35 +82,40 @@ const Home: NextPage = () => {
     //console.log(routers);
   }
 
-  function handleClick(e: any, info: DraggableData): void {
-    console.log("CLicked royuter: ", clickedRouter);
-
-    if (clickedRouter && clickedRouter.id != e.target.id) {
-      setLines((oldLines) => [
-        ...oldLines,
-        [
-          clickedRouter,
-          {
-            start: start,
-            onStop: drop,
-            onDrag: drag,
-            id: e.target.id,
-            x: info.x,
-            y: info.y,
-          },
-        ],
-      ]);
-      setClickedRouter(null);
+  function handleClick(e: BaseSyntheticEvent, info: DraggableData): void {
+    if (!clickedRouter || clickedRouter.id == e.target.id) {
+      setClickedRouter({
+        start: start,
+        onstop: drop,
+        onDrag: drag,
+        id: e.target.id,
+        x: info.x,
+        y: info.y,
+      });
       return;
     }
-    setClickedRouter({
+    const secondRouter = {
       start: start,
-      onstop: drop,
+      onStop: drop,
       onDrag: drag,
       id: e.target.id,
       x: info.x,
       y: info.y,
-    });
+    };
+    let [smaller, larger] = [clickedRouter, secondRouter].sort((a, b) =>
+      a.id > b.id ? 1 : -1
+    );
+
+    // Check for dupe connections
+    for (const [r1, r2] of lines) {
+      if (r1.id == smaller.id && r2.id == larger.id) {
+        return;
+      }
+    }
+
+    setLines((oldLines) => [...oldLines, [smaller, larger]]);
+    setClickedRouter(null);
+    console.log("lines: ", lines);
   }
 
   return (
@@ -121,6 +127,9 @@ const Home: NextPage = () => {
       </Head>
 
       <main className="flex h-screen w-screen overflow-hidden bg-slate-400">
+        <div className="absolute right-[15%]">
+          Current selected router is: {clickedRouter?.id ?? "None"}
+        </div>
         <div id="board" className="w-screen opacity-1">
           <svg
             id="lines"
