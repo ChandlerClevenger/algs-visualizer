@@ -16,6 +16,7 @@ const Home: NextPage = () => {
     x: 0,
     y: 0,
     size: ROUTER_SIZE,
+    weight: -1,
   };
   const [routers, setRouters] = useState<RouterInt[]>([defaultRouter]);
   const [currentPos, setCurrentPos] = useState({ top: 0, left: 0 });
