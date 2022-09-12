@@ -2,18 +2,10 @@ import type { NextPage } from "next";
 import Head from "next/head";
 import React, { BaseSyntheticEvent, useState } from "react";
 import { DraggableData } from "react-draggable";
-import Router from "../componets/router";
-
+import Router from "../componets/DraggableRouter";
+import { RouterInt } from "../types/bin";
 const ROUTER_SIZE = 75;
 const LINE_OFFSET = ROUTER_SIZE / 2;
-interface RouterInt {
-  onStop: any;
-  start: any;
-  onDrag: any;
-  id: number;
-  x: number;
-  y: number;
-}
 
 const Home: NextPage = () => {
   const defaultRouter: RouterInt = {
@@ -23,11 +15,12 @@ const Home: NextPage = () => {
     id: 0,
     x: 0,
     y: 0,
+    size: ROUTER_SIZE,
   };
   const [routers, setRouters] = useState<RouterInt[]>([defaultRouter]);
   const [currentPos, setCurrentPos] = useState({ top: 0, left: 0 });
   const [lines, setLines] = useState<[RouterInt, RouterInt][]>([]);
-  const [clickedRouter, setClickedRouter] = useState<any>();
+  const [clickedRouterId, setClickedRouterId] = useState<number>(-1);
 
   function drag(e: any, info: DraggableData): void {
     const DRAGGED_ID = Number(info.node.id);
@@ -41,6 +34,7 @@ const Home: NextPage = () => {
     });
     setLines((lines) => [...lines]);
   }
+
   function start(e: BaseSyntheticEvent): void {
     const { top, left } = e.target.getBoundingClientRect();
     setCurrentPos({ top, left });
@@ -76,36 +70,33 @@ const Home: NextPage = () => {
           id: routers.length,
           x: 0,
           y: 0,
+          size: ROUTER_SIZE,
+          weight: -1,
         },
       ]);
     }
-    //console.log(routers);
   }
 
   function handleClick(e: BaseSyntheticEvent, info: DraggableData): void {
-    if (!clickedRouter || clickedRouter.id == e.target.id) {
-      setClickedRouter({
-        start: start,
-        onstop: drop,
-        onDrag: drag,
-        id: e.target.id,
-        x: info.x,
-        y: info.y,
-      });
+    const nodeId = Number(info.node.id);
+    if (clickedRouterId == -1 || clickedRouterId == nodeId) {
+      setClickedRouterId(nodeId);
       return;
     }
-    const secondRouter = {
-      start: start,
-      onStop: drop,
-      onDrag: drag,
-      id: e.target.id,
-      x: info.x,
-      y: info.y,
-    };
-    const [smaller, larger] = [clickedRouter, secondRouter].sort((a, b) =>
+
+    const firstRouter = routers.find((router) => {
+      return router.id == nodeId;
+    });
+    const secondRouter = routers.find((router) => {
+      return router.id == clickedRouterId;
+    });
+    if (!firstRouter || !secondRouter) return;
+
+    const [smaller, larger] = [firstRouter, secondRouter].sort((a, b) =>
       a.id > b.id ? 1 : -1
     );
 
+    if (!(smaller && larger)) return;
     // Check for dupe connections
     for (const [r1, r2] of lines) {
       if (r1.id == smaller.id && r2.id == larger.id) {
@@ -114,8 +105,7 @@ const Home: NextPage = () => {
     }
 
     setLines((oldLines) => [...oldLines, [smaller, larger]]);
-    setClickedRouter(null);
-    console.log("lines: ", lines);
+    setClickedRouterId(-1);
   }
 
   return (
@@ -128,7 +118,8 @@ const Home: NextPage = () => {
 
       <main className="flex h-screen w-screen overflow-hidden bg-slate-400">
         <div className="absolute right-[15%]">
-          Current selected router is: {clickedRouter?.id ?? "None"}
+          Current selected router is:{" "}
+          {clickedRouterId == -1 ? "None" : clickedRouterId}
         </div>
         <div id="board" className="w-screen opacity-1">
           <svg
@@ -157,6 +148,7 @@ const Home: NextPage = () => {
               start={start}
               onStop={drop}
               onDrag={drag}
+              weight={router.weight}
             />
           ))}
         </div>
