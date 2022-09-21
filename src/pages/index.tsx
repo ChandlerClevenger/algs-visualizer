@@ -4,7 +4,7 @@ import React, { BaseSyntheticEvent, useState } from "react";
 import { DraggableData } from "react-draggable";
 import Router from "../componets/DraggableRouter";
 import Line from "../componets/Line";
-import { RouterInt } from "../types/bin";
+import { RouterInt, LineInt } from "../types/bin";
 const ROUTER_SIZE = 75;
 const LINE_OFFSET = ROUTER_SIZE / 2;
 
@@ -21,17 +21,23 @@ const Home: NextPage = () => {
   };
   const [routers, setRouters] = useState<RouterInt[]>([defaultRouter]);
   const [currentPos, setCurrentPos] = useState({ top: 0, left: 0 });
-  const [lines, setLines] = useState<[RouterInt, RouterInt][]>([]);
+  const [lines, setLines] = useState<LineInt[]>([]);
   const [clickedRouterId, setClickedRouterId] = useState<number>(-1);
 
   function drag(e: any, info: DraggableData): void {
     const DRAGGED_ID = Number(info.node.id);
     // Update lines
-    lines.map(([el1, el2]) => {
-      if ([Number(el1.id), Number(el2.id)].includes(DRAGGED_ID)) {
-        const current = DRAGGED_ID == el1.id ? el1 : el2;
-        current.x = info.x;
-        current.y = info.y;
+    lines.map((line) => {
+      if (
+        [Number(line.firstNode), Number(line.secondNode)].includes(DRAGGED_ID)
+      ) {
+        if (DRAGGED_ID == line.firstNode) {
+          line.x1 = info.x + LINE_OFFSET;
+          line.y1 = info.y + LINE_OFFSET;
+        } else {
+          line.x2 = info.x + LINE_OFFSET;
+          line.y2 = info.y + LINE_OFFSET;
+        }
       }
     });
     setLines((lines) => [...lines]);
@@ -80,7 +86,8 @@ const Home: NextPage = () => {
   }
 
   function lineClick(e: any) {
-    const line = e.target;
+    const line = e.target.id;
+    console.log(lines);
   }
 
   function handleClick(e: BaseSyntheticEvent, info: DraggableData): void {
@@ -104,13 +111,26 @@ const Home: NextPage = () => {
 
     if (!(smaller && larger)) return;
     // Check for dupe connections
-    for (const [r1, r2] of lines) {
-      if (r1.id == smaller.id && r2.id == larger.id) {
+    for (const line of lines) {
+      if (line.firstNode == smaller.id && line.secondNode == larger.id) {
         return;
       }
     }
 
-    setLines((oldLines) => [...oldLines, [smaller, larger]]);
+    setLines((oldLines) => [
+      ...oldLines,
+      {
+        clicked: lineClick,
+        firstNode: smaller.id,
+        secondNode: larger.id,
+        id: lines.length,
+        x1: smaller.x + LINE_OFFSET,
+        x2: larger.x + LINE_OFFSET,
+        y1: smaller.y + LINE_OFFSET,
+        y2: larger.y + LINE_OFFSET,
+        weight: 0,
+      },
+    ]);
     setClickedRouterId(-1);
   }
 
@@ -129,21 +149,8 @@ const Home: NextPage = () => {
         </div>
         <div id="board" className="w-screen opacity-1">
           <svg id="lines" className="absolute w-screen h-screen">
-            {lines.map(([routerInt1, routerInt2], index) => {
-              return (
-                <Line
-                  key={index}
-                  id={index}
-                  firstNode={routerInt1.id}
-                  secondNode={routerInt2.id}
-                  clicked={lineClick}
-                  x1={routerInt1.x + LINE_OFFSET}
-                  y1={routerInt1.y + LINE_OFFSET}
-                  x2={routerInt2.x + LINE_OFFSET}
-                  y2={routerInt2.y + LINE_OFFSET}
-                  weight={0}
-                />
-              );
+            {lines.map((int, index) => {
+              return <Line key={index} {...int} />;
             })}
           </svg>
           {routers.map((router, index) => (
