@@ -1,6 +1,6 @@
 import type { NextPage } from "next";
 import Head from "next/head";
-import React, { BaseSyntheticEvent, useState } from "react";
+import React, { BaseSyntheticEvent, useEffect, useState } from "react";
 import { DraggableData } from "react-draggable";
 import Router from "../componets/DraggableRouter";
 import Line from "../componets/Line";
@@ -23,6 +23,7 @@ const Home: NextPage = () => {
   const [currentPos, setCurrentPos] = useState({ top: 0, left: 0 });
   const [lines, setLines] = useState<LineInt[]>([]);
   const [clickedRouterId, setClickedRouterId] = useState<number>(-1);
+  const [lineClicked, setLineClicked] = useState<number>(-1);
 
   function drag(e: any, info: DraggableData): void {
     const DRAGGED_ID = Number(info.node.id);
@@ -86,8 +87,33 @@ const Home: NextPage = () => {
   }
 
   function lineClick(e: any) {
-    const line = e.target.id;
-    console.log(lines);
+    setLineClicked(parseInt(e.target.id.replace(/^\D+/g, "")));
+  }
+
+  useEffect(() => {
+    if (lineClicked == -1) return;
+    setLineClicked(-1);
+    const WEIGHT = getWeight();
+    if (WEIGHT == -1) return;
+    lines.map((line) => {
+      if (line.id == lineClicked) {
+        line.weight = WEIGHT;
+      }
+    });
+  }, [lineClicked]);
+
+  function getWeight(): number {
+    let weight = 0;
+    try {
+      const prompted = prompt("Enter a new weight: ");
+      if (!prompted) throw TypeError("Nothing was entered");
+      weight = parseInt(prompted);
+      if (isNaN(weight)) throw TypeError("NaN");
+    } catch (e) {
+      console.log(e);
+      return -1;
+    }
+    return weight;
   }
 
   function handleClick(e: BaseSyntheticEvent, info: DraggableData): void {
@@ -149,9 +175,9 @@ const Home: NextPage = () => {
         </div>
         <div id="board" className="w-screen opacity-1">
           <svg id="lines" className="absolute w-screen h-screen">
-            {lines.map((int, index) => {
-              return <Line key={index} {...int} />;
-            })}
+            {lines.map((line, index) => (
+              <Line key={index} {...line} />
+            ))}
           </svg>
           {routers.map((router, index) => (
             <Router
