@@ -3,6 +3,7 @@ import Head from "next/head";
 import React, { BaseSyntheticEvent, useState } from "react";
 import { DraggableData } from "react-draggable";
 import Router from "../componets/DraggableRouter";
+import Line from "../componets/Line";
 import { RouterInt } from "../types/bin";
 const ROUTER_SIZE = 75;
 const LINE_OFFSET = ROUTER_SIZE / 2;
@@ -78,6 +79,10 @@ const Home: NextPage = () => {
     }
   }
 
+  function lineClick(e: any) {
+    const line = e.target;
+  }
+
   function handleClick(e: BaseSyntheticEvent, info: DraggableData): void {
     const nodeId = Number(info.node.id);
     if (clickedRouterId == -1 || clickedRouterId == nodeId) {
@@ -123,21 +128,23 @@ const Home: NextPage = () => {
           {clickedRouterId == -1 ? "None" : clickedRouterId}
         </div>
         <div id="board" className="w-screen opacity-1">
-          <svg
-            id="lines"
-            className="absolute w-screen h-screen pointer-events-none"
-          >
-            {lines.map(([line1, line2], index) => (
-              <line
-                key={index}
-                x1={line1.x + LINE_OFFSET}
-                y1={line1.y + LINE_OFFSET}
-                x2={line2.x + LINE_OFFSET}
-                y2={line2.y + LINE_OFFSET}
-                strokeWidth={1}
-                stroke={"black"}
-              />
-            ))}
+          <svg id="lines" className="absolute w-screen h-screen">
+            {lines.map(([routerInt1, routerInt2], index) => {
+              return (
+                <Line
+                  key={index}
+                  id={index}
+                  firstNode={routerInt1.id}
+                  secondNode={routerInt2.id}
+                  clicked={lineClick}
+                  x1={routerInt1.x + LINE_OFFSET}
+                  y1={routerInt1.y + LINE_OFFSET}
+                  x2={routerInt2.x + LINE_OFFSET}
+                  y2={routerInt2.y + LINE_OFFSET}
+                  weight={0}
+                />
+              );
+            })}
           </svg>
           {routers.map((router, index) => (
             <Router
