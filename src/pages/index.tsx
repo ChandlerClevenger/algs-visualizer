@@ -196,7 +196,7 @@ const Home: NextPage = () => {
     nodes: number[],
     startingNode: number
   ) {
-    let visitedNodes: number[] | undefined = [];
+    const visitedNodes: number[] | undefined = [];
     let currentNode: number | undefined = startingNode;
     let finalConnections = initializeFinalConnections(
       edges,
@@ -216,7 +216,7 @@ const Home: NextPage = () => {
         currentNode
       );
     }
-    let finalConnectionsList = [];
+    const finalConnectionsList = [];
     for (const [key, value] of Object.entries(finalConnections)) {
       finalConnectionsList.push(value);
     }
@@ -228,11 +228,11 @@ const Home: NextPage = () => {
     edges: LineInt[],
     currentNode: number
   ) {
-    for (let edge of edges) {
+    for (const edge of edges) {
       if (edge.firstNode == currentNode || edge.secondNode == currentNode) {
-        let notCurrent =
+        const notCurrent =
           edge.firstNode == currentNode ? edge.secondNode : edge.firstNode;
-        let currNode =
+        const currNode =
           edge.firstNode == notCurrent ? edge.secondNode : edge.firstNode;
         if (
           finalConnections[currNode].weight + edge.weight <
@@ -256,17 +256,17 @@ const Home: NextPage = () => {
     let initCons: any = {};
     initCons[currentNode] = { weight: 0, prevNode: currentNode };
 
-    for (let edge of edges) {
+    for (const edge of edges) {
       if (edge.firstNode == currentNode || edge.secondNode == currentNode) {
-        let notCurrent =
+        const notCurrent =
           edge.firstNode == currentNode ? edge.secondNode : edge.firstNode;
-        let prevNode =
+        const prevNode =
           edge.firstNode == notCurrent ? edge.secondNode : edge.firstNode;
         initCons[notCurrent] = { weight: edge.weight, prevNode: prevNode };
       }
     }
 
-    for (let node of nodes) {
+    for (const node of nodes) {
       if (!initCons[node]) {
         initCons[node] = { weight: Infinity, prevNode: null };
       }
@@ -281,7 +281,7 @@ const Home: NextPage = () => {
   ): number | undefined {
     const nodesToVisit = nodes.filter((node) => !visitedNodes.includes(node));
     let minNode = nodesToVisit[0];
-    for (let node of nodesToVisit) {
+    for (const node of nodesToVisit) {
       if (!minNode) continue;
       if (finalConnections[node].weight < finalConnections[minNode].weight) {
         minNode = node;
