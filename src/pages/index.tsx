@@ -1,5 +1,6 @@
 import type { NextPage } from "next";
 import Head from "next/head";
+import Script from "next/script";
 import React, { BaseSyntheticEvent, useEffect, useState } from "react";
 import { DraggableData } from "react-draggable";
 import Router from "../componets/DraggableRouter";
@@ -24,6 +25,7 @@ const Home: NextPage = () => {
   const [lines, setLines] = useState<LineInt[]>([]);
   const [clickedRouterId, setClickedRouterId] = useState<number>(-1);
   const [lineClicked, setLineClicked] = useState<number>(-1);
+  const [runDijk, setRunDijk] = useState<boolean>(false);
 
   function drag(e: any, info: DraggableData): void {
     const DRAGGED_ID = Number(info.node.id);
@@ -100,7 +102,29 @@ const Home: NextPage = () => {
         line.weight = WEIGHT;
       }
     });
+    setRunDijk(true);
   }, [lineClicked]);
+
+  useEffect(() => {
+    if (!runDijk) return;
+    const results = performDijkstra(
+      lines,
+      [
+        ...routers.map((r) => {
+          return r.id;
+        }),
+      ],
+      routers[0].id
+    );
+    console.log(Object.keys(results));
+    for (const key in Object.keys(results)) {
+      const router = routers.find((r) => {
+        return r.id == Number(key);
+      });
+      router.weight = results[router.id].weight;
+    }
+    setRunDijk(false);
+  }, [runDijk]);
 
   function getWeight(): number {
     let weight = 0;
@@ -157,7 +181,89 @@ const Home: NextPage = () => {
         weight: 0,
       },
     ]);
+    setRunDijk(true);
     setClickedRouterId(-1);
+  }
+
+  function performDijkstra(edges, nodes, startingNode) {
+    console.log("Edges: ", edges);
+    console.log("Nodes: ", nodes);
+    console.log("startNode: ", startingNode);
+
+    let visitedNodes = [];
+    let currentNode = startingNode;
+    let finalConnections = initializeFinalConnections(
+      edges,
+      nodes,
+      currentNode
+    );
+    visitedNodes.push(currentNode);
+
+    while (visitedNodes.length != nodes.length) {
+      currentNode = pickBestNode(finalConnections, nodes, visitedNodes);
+      visitedNodes.push(currentNode);
+
+      finalConnections = updateConnections(
+        finalConnections,
+        edges,
+        currentNode
+      );
+    }
+    return finalConnections;
+  }
+
+  function updateConnections(finalConnections, edges, currentNode) {
+    for (let edge of edges) {
+      if (edge.firstNode == currentNode || edge.secondNode == currentNode) {
+        let notCurrent =
+          edge.firstNode == currentNode ? edge.secondNode : edge.firstNode;
+        let currNode =
+          edge.firstNode == notCurrent ? edge.secondNode : edge.firstNode;
+        if (
+          finalConnections[currNode].weight + edge.weight <
+          finalConnections[notCurrent].weight
+        ) {
+          finalConnections[notCurrent] = {
+            weight: finalConnections[currNode].weight + edge.weight,
+            prevNode: currNode,
+          };
+        }
+      }
+    }
+    return finalConnections;
+  }
+
+  function initializeFinalConnections(edges, nodes, currentNode) {
+    let initCons = {};
+    initCons[currentNode] = { weight: 0, prevNode: currentNode };
+
+    for (let edge of edges) {
+      if (edge.firstNode == currentNode || edge.secondNode == currentNode) {
+        let notCurrent =
+          edge.firstNode == currentNode ? edge.secondNode : edge.firstNode;
+        let prevNode =
+          edge.firstNode == notCurrent ? edge.secondNode : edge.firstNode;
+        initCons[notCurrent] = { weight: edge.weight, prevNode: prevNode };
+      }
+    }
+
+    for (let node of nodes) {
+      if (!initCons[node]) {
+        initCons[node] = { weight: Infinity, prevNode: null };
+      }
+    }
+    return initCons;
+  }
+
+  function pickBestNode(finalConnections, nodes, visitedNodes) {
+    let nodesToVisit = nodes.filter((node) => !visitedNodes.includes(node));
+    let minNode = nodesToVisit[0];
+    for (let node of nodesToVisit) {
+      if (finalConnections[node].weight < finalConnections[minNode].weight) {
+        minNode = node;
+      }
+    }
+    return minNode;
   }
 
   return (
