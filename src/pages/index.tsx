@@ -1,6 +1,5 @@
 import type { NextPage } from "next";
 import Head from "next/head";
-import Script from "next/script";
 import React, { BaseSyntheticEvent, useEffect, useState } from "react";
 import { DraggableData } from "react-draggable";
 import Router from "../componets/DraggableRouter";
@@ -26,6 +25,7 @@ const Home: NextPage = () => {
   const [clickedRouterId, setClickedRouterId] = useState<number>(-1);
   const [lineClicked, setLineClicked] = useState<number>(-1);
   const [runDijk, setRunDijk] = useState<boolean>(false);
+  const [rootRouterId, setRootRouterId] = useState<number>(0);
 
   function drag(e: any, info: DraggableData): void {
     const DRAGGED_ID = Number(info.node.id);
@@ -106,22 +106,21 @@ const Home: NextPage = () => {
   }, [lineClicked]);
 
   useEffect(() => {
-    if (!runDijk) return;
-    const results = performDijkstra(
-      lines,
-      [
-        ...routers.map((r) => {
-          return r.id;
-        }),
-      ],
-      routers[0].id
-    );
-    console.log(Object.keys(results));
-    for (const key in Object.keys(results)) {
+    if (!routers[0] || !runDijk) return;
+    const routerIds = [
+      ...routers.map((r) => {
+        return r.id;
+      }),
+    ];
+
+    const results: any = performDijkstra(lines, routerIds, rootRouterId);
+    for (const item in results) {
+      console.log(results[item]);
       const router = routers.find((r) => {
-        return r.id == Number(key);
+        return r.id == Number(item);
       });
-      router.weight = results[router.id].weight;
+      if (!router) continue;
+      router.weight = results[item].weight;
     }
     setRunDijk(false);
   }, [runDijk]);
@@ -185,13 +184,20 @@ const Home: NextPage = () => {
     setClickedRouterId(-1);
   }
 
-  function performDijkstra(edges, nodes, startingNode) {
-    console.log("Edges: ", edges);
-    console.log("Nodes: ", nodes);
-    console.log("startNode: ", startingNode);
-
-    let visitedNodes = [];
-    let currentNode = startingNode;
+  /**
+   *
+   * @param edges the connections
+   * @param nodes unique set of numbers as ids
+   * @param startingNode root node id
+   * @returns list finalconnections
+   */
+  function performDijkstra(
+    edges: LineInt[],
+    nodes: number[],
+    startingNode: number
+  ) {
+    let visitedNodes: number[] | undefined = [];
+    let currentNode: number | undefined = startingNode;
     let finalConnections = initializeFinalConnections(
       edges,
       nodes,
@@ -201,6 +207,7 @@ const Home: NextPage = () => {
 
     while (visitedNodes.length != nodes.length) {
       currentNode = pickBestNode(finalConnections, nodes, visitedNodes);
+      if (!currentNode) continue;
       visitedNodes.push(currentNode);
 
       finalConnections = updateConnections(
@@ -209,10 +216,18 @@ const Home: NextPage = () => {
         currentNode
       );
     }
-    return finalConnections;
+    let finalConnectionsList = [];
+    for (const [key, value] of Object.entries(finalConnections)) {
+      finalConnectionsList.push(value);
+    }
+    return finalConnectionsList;
   }
 
-  function updateConnections(finalConnections, edges, currentNode) {
+  function updateConnections(
+    finalConnections: any,
+    edges: LineInt[],
+    currentNode: number
+  ) {
     for (let edge of edges) {
       if (edge.firstNode == currentNode || edge.secondNode == currentNode) {
         let notCurrent =
@@ -233,8 +248,12 @@ const Home: NextPage = () => {
     return finalConnections;
   }
 
-  function initializeFinalConnections(edges, nodes, currentNode) {
-    let initCons = {};
+  function initializeFinalConnections(
+    edges: LineInt[],
+    nodes: number[],
+    currentNode: number
+  ) {
+    let initCons: any = {};
     initCons[currentNode] = { weight: 0, prevNode: currentNode };
 
     for (let edge of edges) {
@@ -255,10 +274,15 @@ const Home: NextPage = () => {
     return initCons;
   }
 
-  function pickBestNode(finalConnections, nodes, visitedNodes) {
-    let nodesToVisit = nodes.filter((node) => !visitedNodes.includes(node));
+  function pickBestNode(
+    finalConnections: any,
+    nodes: number[],
+    visitedNodes: number[]
+  ): number | undefined {
+    const nodesToVisit = nodes.filter((node) => !visitedNodes.includes(node));
     let minNode = nodesToVisit[0];
     for (let node of nodesToVisit) {
+      if (!minNode) continue;
       if (finalConnections[node].weight < finalConnections[minNode].weight) {
         minNode = node;
       }
@@ -278,6 +302,8 @@ const Home: NextPage = () => {
         <div className="absolute right-[15%]">
           Current selected router is:{" "}
           {clickedRouterId == -1 ? "None" : clickedRouterId}
+          <br />
+          Current root: {rootRouterId}
         </div>
         <div id="board" className="w-screen opacity-1">
           <svg id="lines" className="absolute w-screen h-screen">
