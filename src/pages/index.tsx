@@ -253,7 +253,7 @@ const Home: NextPage = () => {
     nodes: number[],
     currentNode: number
   ) {
-    let initCons: any = {};
+    const initCons: any = {};
     initCons[currentNode] = { weight: 0, prevNode: currentNode };
 
     for (const edge of edges) {
