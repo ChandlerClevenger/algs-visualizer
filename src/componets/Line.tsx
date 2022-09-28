@@ -1,5 +1,5 @@
-import { LineInt } from "../types/bin";
-export default function Line({ id, x1, y1, x2, y2, weight, clicked }: LineInt) {
+import { LineInt, LinePos } from "../types/bin";
+export default function Line({ id, x1, y1, x2, y2, weight, clicked }: LinePos) {
   return (
     <>
       <line

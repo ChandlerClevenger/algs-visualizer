@@ -1,129 +1,128 @@
 import type { NextPage } from "next";
 import Head from "next/head";
-import React, { BaseSyntheticEvent, useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { DraggableData } from "react-draggable";
 import Router from "../componets/DraggableRouter";
 import Line from "../componets/Line";
-import { RouterInt, LineInt } from "../types/bin";
+import { RouterInt, LineInt, Edge, Node, Graph, LinePos } from "../types/bin";
 const ROUTER_SIZE = 75;
 const LINE_OFFSET = ROUTER_SIZE / 2;
 
 const Home: NextPage = () => {
-  const defaultRouter: RouterInt = {
+  const INITIAL_ROUTER: RouterInt = {
     onStop: drop,
     start: start,
     onDrag: drag,
     id: 0,
     x: 0,
     y: 0,
+    prevNode: null,
+    nextNode: null,
     size: ROUTER_SIZE,
     weight: -1,
   };
-  const [routers, setRouters] = useState<RouterInt[]>([defaultRouter]);
-  const [currentPos, setCurrentPos] = useState({ top: 0, left: 0 });
+
+  useEffect(() => {
+    console.log("Rendering");
+  });
+
+  // By useing ref here we can prevent an un-needed re-render on click
+  let currentDraggedRef = useRef({ x: 0, y: 0 });
+  const [routers, setRouters] = useState<RouterInt[]>([INITIAL_ROUTER]);
   const [lines, setLines] = useState<LineInt[]>([]);
+  const [linePositions, setLinePositions] = useState<LinePos[]>([]);
   const [clickedRouterId, setClickedRouterId] = useState<number>(-1);
-  const [lineClicked, setLineClicked] = useState<number>(-1);
-  const [runDijk, setRunDijk] = useState<boolean>(false);
   const [rootRouterId, setRootRouterId] = useState<number>(0);
 
-  function drag(e: any, info: DraggableData): void {
+  function drag(e: MouseEvent, info: DraggableData): void {
     const DRAGGED_ID = Number(info.node.id);
-    // Update lines
+    // Update line pos on drag
     lines.map((line) => {
-      if (
-        [Number(line.firstNode), Number(line.secondNode)].includes(DRAGGED_ID)
-      ) {
-        if (DRAGGED_ID == line.firstNode) {
-          line.x1 = info.x + LINE_OFFSET;
-          line.y1 = info.y + LINE_OFFSET;
-        } else {
-          line.x2 = info.x + LINE_OFFSET;
-          line.y2 = info.y + LINE_OFFSET;
-        }
+      if (line.firstNode.id == DRAGGED_ID) {
+        setLinePositions((oldLinePos) =>
+          oldLinePos.map((ol) => {
+            if (ol.id == line.id) {
+              return {
+                ...ol,
+                x1: info.x + LINE_OFFSET,
+                y1: info.y + LINE_OFFSET,
+              };
+            } else {
+              return ol;
+            }
+          })
+        );
+      } else if (line.secondNode.id == DRAGGED_ID) {
+        setLinePositions((oldLinePos) =>
+          oldLinePos.map((ol) => {
+            if (ol.id == line.id) {
+              return {
+                ...ol,
+                x2: info.x + LINE_OFFSET,
+                y2: info.y + LINE_OFFSET,
+              };
+            } else {
+              return ol;
+            }
+          })
+        );
       }
     });
-    setLines((lines) => [...lines]);
   }
 
-  function start(e: BaseSyntheticEvent): void {
-    const { top, left } = e.target.getBoundingClientRect();
-    setCurrentPos({ top, left });
+  // Set draggables current position to check if click or drag
+  // This is checked in the drop function
+  function start(e: MouseEvent, info: DraggableData): void {
+    currentDraggedRef.current = { x: info.x, y: info.y };
   }
 
-  function drop(e: BaseSyntheticEvent, info: DraggableData): void {
-    const { top, left } = e.target.getBoundingClientRect();
-    // Must move at least 100 px out
-    if (info.x < 100 && info.y < 100) return;
-
+  function drop(e: MouseEvent, info: DraggableData): void {
+    const { x, y } = { ...info };
+    // Must move at least 100 px out of start area
+    if (x < 100 && y < 100) return;
     // Detect click
-    if (currentPos.left == left && currentPos.top == top) {
-      handleClick(e, info);
+    if (currentDraggedRef.current.x == x && currentDraggedRef.current.y == y) {
+      handleRouterClick(e, info);
       return;
     }
 
     const DRAGGED_ID = Number(info.node.id);
-    for (const router of routers) {
-      if (router.id == DRAGGED_ID) {
-        // update position of old
-        router.x = info.x;
-        router.y = info.y;
-      }
-    }
+    // Update x and y if router moved
+    setRouters((oldRouters) =>
+      oldRouters.map((r) => {
+        if (Number(r.id) == DRAGGED_ID) {
+          // update position of old
+          return {
+            ...r,
+            x: info.x,
+            y: info.y,
+          };
+        } else {
+          return r;
+        }
+      })
+    );
 
+    // If newest router is dragged out, add new router
+    // Add router as Node
     if (DRAGGED_ID == routers.length - 1) {
-      setRouters((oldRouters) => [
-        ...oldRouters,
-        {
-          start: start,
-          onStop: drop,
-          onDrag: drag,
-          id: routers.length,
-          x: 0,
-          y: 0,
-          size: ROUTER_SIZE,
-          weight: -1,
-        },
-      ]);
+      const newRouter = {
+        id: routers.length,
+        x: 0,
+        y: 0,
+        size: ROUTER_SIZE,
+        weight: -1,
+        prevNode: null,
+        nextNode: null,
+        onStop: drop,
+        start: start,
+        onDrag: drag,
+      };
+      setRouters((routers) => [...routers, newRouter]);
     }
   }
 
-  function lineClick(e: any) {
-    setLineClicked(parseInt(e.target.id.replace(/^\D+/g, "")));
-  }
-
-  useEffect(() => {
-    if (lineClicked == -1) return;
-    setLineClicked(-1);
-    const WEIGHT = getWeight();
-    if (WEIGHT == -1) return;
-    lines.map((line) => {
-      if (line.id == lineClicked) {
-        line.weight = WEIGHT;
-      }
-    });
-    setRunDijk(true);
-  }, [lineClicked]);
-
-  useEffect(() => {
-    if (!routers[0] || !runDijk) return;
-    const routerIds = [
-      ...routers.map((r) => {
-        return r.id;
-      }),
-    ];
-
-    const results: any = performDijkstra(lines, routerIds, rootRouterId);
-    for (const item in results) {
-      console.log(results[item]);
-      const router = routers.find((r) => {
-        return r.id == Number(item);
-      });
-      if (!router) continue;
-      router.weight = results[item].weight;
-    }
-    setRunDijk(false);
-  }, [runDijk]);
+  function lineClick(e: MouseEvent): void {}
 
   function getWeight(): number {
     let weight = 0;
@@ -132,6 +131,7 @@ const Home: NextPage = () => {
       if (!prompted) throw TypeError("Nothing was entered");
       weight = parseInt(prompted);
       if (isNaN(weight)) throw TypeError("NaN");
+      if (weight < 0) throw TypeError("Weight can not be negative");
     } catch (e) {
       console.log(e);
       return -1;
@@ -139,156 +139,174 @@ const Home: NextPage = () => {
     return weight;
   }
 
-  function handleClick(e: BaseSyntheticEvent, info: DraggableData): void {
-    const nodeId = Number(info.node.id);
-    if (clickedRouterId == -1 || clickedRouterId == nodeId) {
-      setClickedRouterId(nodeId);
-      return;
-    }
+  function handleRouterClick(e: MouseEvent, info: DraggableData): void {
+    const CLICKED_ROUTER_ID = Number(info.node.id);
+    switch (e.button) {
+      case 0:
+        // Left Click
+        if (clickedRouterId != -1) {
+          const firstRouter = routers.find((router) => {
+            return router.id == CLICKED_ROUTER_ID;
+          });
+          const secondRouter = routers.find((router) => {
+            return router.id == clickedRouterId;
+          });
+          if (!firstRouter || !secondRouter) return;
 
-    const firstRouter = routers.find((router) => {
-      return router.id == nodeId;
-    });
-    const secondRouter = routers.find((router) => {
-      return router.id == clickedRouterId;
-    });
-    if (!firstRouter || !secondRouter) return;
+          const [smaller, larger] = [firstRouter, secondRouter].sort((a, b) =>
+            a.id > b.id ? 1 : -1
+          );
 
-    const [smaller, larger] = [firstRouter, secondRouter].sort((a, b) =>
-      a.id > b.id ? 1 : -1
-    );
-
-    if (!(smaller && larger)) return;
-    // Check for dupe connections
-    for (const line of lines) {
-      if (line.firstNode == smaller.id && line.secondNode == larger.id) {
-        return;
-      }
-    }
-
-    setLines((oldLines) => [
-      ...oldLines,
-      {
-        clicked: lineClick,
-        firstNode: smaller.id,
-        secondNode: larger.id,
-        id: lines.length,
-        x1: smaller.x + LINE_OFFSET,
-        x2: larger.x + LINE_OFFSET,
-        y1: smaller.y + LINE_OFFSET,
-        y2: larger.y + LINE_OFFSET,
-        weight: 0,
-      },
-    ]);
-    setRunDijk(true);
-    setClickedRouterId(-1);
-  }
-
-  /**
-   *
-   * @param edges the connections
-   * @param nodes unique set of numbers as ids
-   * @param startingNode root node id
-   * @returns list finalconnections
-   */
-  function performDijkstra(
-    edges: LineInt[],
-    nodes: number[],
-    startingNode: number
-  ) {
-    const visitedNodes: number[] | undefined = [];
-    let currentNode: number | undefined = startingNode;
-    let finalConnections = initializeFinalConnections(
-      edges,
-      nodes,
-      currentNode
-    );
-    visitedNodes.push(currentNode);
-
-    while (visitedNodes.length != nodes.length) {
-      currentNode = pickBestNode(finalConnections, nodes, visitedNodes);
-      if (!currentNode) continue;
-      visitedNodes.push(currentNode);
-
-      finalConnections = updateConnections(
-        finalConnections,
-        edges,
-        currentNode
-      );
-    }
-    const finalConnectionsList = [];
-    for (const [key, value] of Object.entries(finalConnections)) {
-      finalConnectionsList.push(value);
-    }
-    return finalConnectionsList;
-  }
-
-  function updateConnections(
-    finalConnections: any,
-    edges: LineInt[],
-    currentNode: number
-  ) {
-    for (const edge of edges) {
-      if (edge.firstNode == currentNode || edge.secondNode == currentNode) {
-        const notCurrent =
-          edge.firstNode == currentNode ? edge.secondNode : edge.firstNode;
-        const currNode =
-          edge.firstNode == notCurrent ? edge.secondNode : edge.firstNode;
-        if (
-          finalConnections[currNode].weight + edge.weight <
-          finalConnections[notCurrent].weight
-        ) {
-          finalConnections[notCurrent] = {
-            weight: finalConnections[currNode].weight + edge.weight,
-            prevNode: currNode,
-          };
+          if (!(smaller && larger)) return;
+          // Check for dupe connections
+          for (const line of lines) {
+            if (
+              line.firstNode.id == smaller.id &&
+              line.secondNode.id == larger.id
+            ) {
+              return;
+            }
+          }
+          setLinePositions((oldLinesPos) => [
+            ...oldLinesPos,
+            {
+              id: lines.length,
+              x1: smaller.x + LINE_OFFSET,
+              y1: smaller.y + LINE_OFFSET,
+              x2: larger.x + LINE_OFFSET,
+              y2: larger.y + LINE_OFFSET,
+              weight: 0,
+            },
+          ]);
+          setLines((oldLines) => [
+            ...oldLines,
+            {
+              id: lines.length,
+              firstNode: smaller,
+              secondNode: larger,
+              weight: 0,
+            },
+          ]);
+          setClickedRouterId(-1);
+        } else {
+          setClickedRouterId(CLICKED_ROUTER_ID);
         }
-      }
+        break;
+      case 2:
+        // Right Click
+        setRootRouterId(CLICKED_ROUTER_ID);
+        break;
+      default:
+        console.log("Inproper keypress");
+        break;
     }
-    return finalConnections;
   }
 
-  function initializeFinalConnections(
-    edges: LineInt[],
-    nodes: number[],
-    currentNode: number
-  ) {
-    const initCons: any = {};
-    initCons[currentNode] = { weight: 0, prevNode: currentNode };
+  // /**
+  //  *
+  //  * @param edges the connections
+  //  * @param nodes unique set of numbers as ids
+  //  * @param startingNode root node id
+  //  * @returns list finalconnections
+  //  */
+  // function performDijkstra(
+  //   edges: LineInt[],
+  //   nodes: number[],
+  //   startingNode: number
+  // ) {
+  //   const visitedNodes: number[] | undefined = [];
+  //   let currentNode: number | undefined = startingNode;
+  //   let finalConnections = initializeFinalConnections(
+  //     edges,
+  //     nodes,
+  //     currentNode
+  //   );
+  //   visitedNodes.push(currentNode);
 
-    for (const edge of edges) {
-      if (edge.firstNode == currentNode || edge.secondNode == currentNode) {
-        const notCurrent =
-          edge.firstNode == currentNode ? edge.secondNode : edge.firstNode;
-        const prevNode =
-          edge.firstNode == notCurrent ? edge.secondNode : edge.firstNode;
-        initCons[notCurrent] = { weight: edge.weight, prevNode: prevNode };
-      }
-    }
+  //   while (visitedNodes.length != nodes.length) {
+  //     currentNode = pickBestNode(finalConnections, nodes, visitedNodes);
+  //     if (!currentNode) continue;
+  //     visitedNodes.push(currentNode);
 
-    for (const node of nodes) {
-      if (!initCons[node]) {
-        initCons[node] = { weight: Infinity, prevNode: null };
-      }
-    }
-    return initCons;
-  }
+  //     finalConnections = updateConnections(
+  //       finalConnections,
+  //       edges,
+  //       currentNode
+  //     );
+  //   }
+  //   const finalConnectionsList = [];
+  //   for (const [key, value] of Object.entries(finalConnections)) {
+  //     finalConnectionsList.push(value);
+  //   }
+  //   return finalConnectionsList;
+  // }
 
-  function pickBestNode(
-    finalConnections: any,
-    nodes: number[],
-    visitedNodes: number[]
-  ): number | undefined {
-    const nodesToVisit = nodes.filter((node) => !visitedNodes.includes(node));
-    let minNode = nodesToVisit[0];
-    for (const node of nodesToVisit) {
-      if (!minNode) continue;
-      if (finalConnections[node].weight < finalConnections[minNode].weight) {
-        minNode = node;
-      }
-    }
-    return minNode;
-  }
+  // function updateConnections(
+  //   finalConnections: any,
+  //   edges: Edge[],
+  //   currentNode: number
+  // ) {
+  //   for (const edge of edges) {
+  //     if (edge.firstNode == currentNode || edge.secondNode == currentNode) {
+  //       const notCurrent =
+  //         edge.firstNode == currentNode ? edge.secondNode : edge.firstNode;
+  //       const currNode =
+  //         edge.firstNode == notCurrent ? edge.secondNode : edge.firstNode;
+  //       if (
+  //         finalConnections[currNode].weight + edge.weight <
+  //         finalConnections[notCurrent].weight
+  //       ) {
+  //         finalConnections[notCurrent] = {
+  //           weight: finalConnections[currNode].weight + edge.weight,
+  //           prevNode: currNode,
+  //         };
+  //       }
+  //     }
+  //   }
+  //   return finalConnections;
+  // }
+
+  // function initializeFinalConnections(
+  //   edges: LineInt[],
+  //   nodes: number[],
+  //   currentNode: number
+  // ) {
+  //   const initCons: any = {};
+  //   initCons[currentNode] = { weight: 0, prevNode: currentNode };
+
+  //   for (const edge of edges) {
+  //     if (edge.firstNode == currentNode || edge.secondNode == currentNode) {
+  //       const notCurrent =
+  //         edge.firstNode == currentNode ? edge.secondNode : edge.firstNode;
+  //       const prevNode =
+  //         edge.firstNode == notCurrent ? edge.secondNode : edge.firstNode;
+  //       initCons[notCurrent] = { weight: edge.weight, prevNode: prevNode };
+  //     }
+  //   }
+
+  //   for (const node of nodes) {
+  //     if (!initCons[node]) {
+  //       initCons[node] = { weight: Infinity, prevNode: null };
+  //     }
+  //   }
+  //   return initCons;
+  // }
+
+  // function pickBestNode(
+  //   finalConnections: any,
+  //   nodes: number[],
+  //   visitedNodes: number[]
+  // ): number | undefined {
+  //   const nodesToVisit = nodes.filter((node) => !visitedNodes.includes(node));
+  //   let minNode = nodesToVisit[0];
+  //   for (const node of nodesToVisit) {
+  //     if (!minNode) continue;
+  //     if (finalConnections[node].weight < finalConnections[minNode].weight) {
+  //       minNode = node;
+  //     }
+  //   }
+  //   return minNode;
+  // }
 
   return (
     <>
@@ -307,8 +325,8 @@ const Home: NextPage = () => {
         </div>
         <div id="board" className="w-screen opacity-1">
           <svg id="lines" className="absolute w-screen h-screen">
-            {lines.map((line, index) => (
-              <Line key={index} {...line} />
+            {linePositions.map((line, index) => (
+              <Line key={index} clicked={lineClick} {...line} />
             ))}
           </svg>
           {routers.map((router, index) => (
@@ -318,6 +336,8 @@ const Home: NextPage = () => {
               id={router.id}
               x={router.x}
               y={router.y}
+              prevNode={router.prevNode}
+              nextNode={router.nextNode}
               start={start}
               onStop={drop}
               onDrag={drag}

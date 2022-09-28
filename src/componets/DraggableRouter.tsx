@@ -13,9 +13,18 @@ export default function Router({
   weight,
 }: RouterInt) {
   const draggableRef = useRef<Draggable>(null);
+
+  function stopMenu(
+    e: React.MouseEvent<HTMLImageElement | HTMLParagraphElement, MouseEvent>
+  ) {
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
+  }
   return (
     <Draggable
       ref={draggableRef}
+      allowAnyClick={true}
       onStart={start}
       onStop={onStop}
       onDrag={onDrag}
@@ -24,12 +33,14 @@ export default function Router({
       handle=".router"
     >
       <div
-        className="absolute router"
+        className="absolute router cursor-grab"
         style={{ transform: `translate(${x}px, ${y}px)`, width: size }}
         id={id.toString()}
+        onContextMenu={stopMenu}
       >
         <img
           draggable={false}
+          onClick={(e) => e.preventDefault()}
           src="./images/pixil-7.png"
           alt="Placeable Router"
         />
